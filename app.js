@@ -115,16 +115,9 @@ function loadQuestions() {
   }
 
   els.questionList.innerHTML = items.map((item) => {
-    const answer = firstAnswer(item.correct_answer);
     return `
       <button class="question-item ${item.id === state.selectedId ? "active" : ""}" data-id="${item.id}" type="button">
         <div class="question-line">${escapeHtml(item.question_text)}</div>
-        <div class="meta">
-          <span class="badge">#${escapeHtml(item.source_question_no)}</span>
-          ${answer ? `<span class="badge answer">Answer ${escapeHtml(answer)}</span>` : ""}
-          <span>${escapeHtml(item.choice_count)} choices</span>
-          <span>${escapeHtml(item.source_file)}</span>
-        </div>
       </button>
     `;
   }).join("");
