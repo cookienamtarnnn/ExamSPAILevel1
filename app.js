@@ -4,6 +4,7 @@ const state = {
   totalPages: 1,
   selectedId: null,
   searchTimer: null,
+  data: null,
 };
 
 const els = {
@@ -44,40 +45,71 @@ function firstAnswer(value) {
   return String(value || "").trim().slice(0, 1).toUpperCase();
 }
 
-function params() {
-  const query = new URLSearchParams();
-  query.set("page", state.page);
-  query.set("page_size", state.pageSize);
-  if (els.searchInput.value.trim()) query.set("q", els.searchInput.value.trim());
-  return query.toString();
+async function loadData() {
+  state.data = await fetchJson("data.json");
 }
 
-async function loadStats() {
-  const stats = await fetchJson("/api/stats");
+function questionChoices(questionId) {
+  return state.data.choicesByQuestion[String(questionId)] || [];
+}
+
+function questionDuplicates(questionId) {
+  return state.data.duplicatesByQuestion[String(questionId)] || [];
+}
+
+function matchesSearch(question, query) {
+  if (!query) return true;
+  const needle = query.toLowerCase();
+  const fields = [
+    question.question_text,
+    question.note,
+    question.reason,
+    question.correct_answer,
+    question.source_file,
+    ...questionChoices(question.id).map((choice) => choice.choice_text),
+  ];
+  return fields.some((value) => String(value || "").toLowerCase().includes(needle));
+}
+
+function getFilteredQuestions() {
+  const query = els.searchInput.value.trim();
+  return state.data.questions.filter((question) => matchesSearch(question, query));
+}
+
+function loadStats() {
+  const stats = state.data.stats;
   els.metricQuestions.textContent = stats.questions;
   els.metricChoices.textContent = stats.choices;
   els.metricDuplicates.textContent = stats.duplicates;
   els.metricSkipped.textContent = stats.skipped;
-  els.dbStatus.textContent = "Database connected";
+  els.dbStatus.textContent = "Data loaded";
 }
 
-async function loadQuestions() {
+function loadQuestions() {
   els.questionList.innerHTML = '<div class="empty-state">Loading questions...</div>';
-  const data = await fetchJson(`/api/questions?${params()}`);
-  state.totalPages = data.total_pages;
-  els.resultTitle.textContent = "Questions";
-  els.resultMeta.textContent = `${data.total} matching question${data.total === 1 ? "" : "s"}`;
-  els.pageInfo.textContent = `${data.page} / ${data.total_pages}`;
-  els.prevPage.disabled = data.page <= 1;
-  els.nextPage.disabled = data.page >= data.total_pages;
+  const filtered = getFilteredQuestions();
+  const total = filtered.length;
+  state.totalPages = Math.max(1, Math.ceil(total / state.pageSize));
+  if (state.page > state.totalPages) state.page = state.totalPages;
+  const start = (state.page - 1) * state.pageSize;
+  const items = filtered.slice(start, start + state.pageSize).map((question) => ({
+    ...question,
+    choice_count: questionChoices(question.id).length,
+  }));
 
-  if (!data.items.length) {
+  els.resultTitle.textContent = "Questions";
+  els.resultMeta.textContent = `${total} matching question${total === 1 ? "" : "s"}`;
+  els.pageInfo.textContent = `${state.page} / ${state.totalPages}`;
+  els.prevPage.disabled = state.page <= 1;
+  els.nextPage.disabled = state.page >= state.totalPages;
+
+  if (!items.length) {
     els.questionList.innerHTML = '<div class="empty-state">No questions match the current filters.</div>';
     els.questionDetail.innerHTML = '<div class="empty-state">Adjust filters to view questions.</div>';
     return;
   }
 
-  els.questionList.innerHTML = data.items.map((item) => {
+  els.questionList.innerHTML = items.map((item) => {
     const answer = firstAnswer(item.correct_answer);
     return `
       <button class="question-item ${item.id === state.selectedId ? "active" : ""}" data-id="${item.id}" type="button">
@@ -96,36 +128,36 @@ async function loadQuestions() {
     button.addEventListener("click", () => selectQuestion(Number(button.dataset.id)));
   });
 
-  if (!state.selectedId || !data.items.some((item) => item.id === state.selectedId)) {
-    selectQuestion(data.items[0].id);
+  if (!state.selectedId || !items.some((item) => item.id === state.selectedId)) {
+    selectQuestion(items[0].id);
   }
 }
 
-async function selectQuestion(id) {
+function selectQuestion(id) {
   state.selectedId = id;
   els.questionList.querySelectorAll(".question-item").forEach((button) => {
     button.classList.toggle("active", Number(button.dataset.id) === id);
   });
 
-  const data = await fetchJson(`/api/questions/${id}`);
-  if (data.error) {
-    els.questionDetail.innerHTML = `<div class="empty-state">${escapeHtml(data.error)}</div>`;
+  const question = state.data.questions.find((item) => item.id === id);
+  if (!question) {
+    els.questionDetail.innerHTML = '<div class="empty-state">Question not found</div>';
     return;
   }
-
-  const question = data.question;
+  const choices = questionChoices(id);
+  const duplicates = questionDuplicates(id);
   const correct = firstAnswer(question.correct_answer);
-  const choices = data.choices.map((choice) => `
+  const choicesHtml = choices.map((choice) => `
     <li class="${firstAnswer(choice.choice_label) === correct ? "correct" : ""}">
       <span class="choiceLabel">${escapeHtml(choice.choice_label)}</span>
       <span>${escapeHtml(choice.choice_text)}</span>
     </li>
   `).join("");
 
-  const duplicateHtml = data.duplicates.length
+  const duplicateHtml = duplicates.length
     ? `
       <div class="sectionTitle">Removed Duplicates</div>
-      ${data.duplicates.map((dup) => `
+      ${duplicates.map((dup) => `
         <div class="note">
           ${escapeHtml(dup.duplicate_source_file)} #${escapeHtml(dup.duplicate_source_question_no)}
         </div>
@@ -143,7 +175,7 @@ async function selectQuestion(id) {
       <span>${escapeHtml(question.source_sheet)}</span>
     </div>
     <div class="sectionTitle">Choices</div>
-    <ul class="choiceList">${choices}</ul>
+    <ul class="choiceList">${choicesHtml}</ul>
     ${question.reason ? `<div class="sectionTitle">Reason</div><div class="note">${escapeHtml(question.reason)}</div>` : ""}
     ${question.note ? `<div class="sectionTitle">Note</div><div class="note">${escapeHtml(question.note)}</div>` : ""}
     ${duplicateHtml}
@@ -153,7 +185,7 @@ async function selectQuestion(id) {
 function refreshFromFilters() {
   state.page = 1;
   state.selectedId = null;
-  loadQuestions().catch(showError);
+  loadQuestions();
 }
 
 function showError(error) {
@@ -172,16 +204,19 @@ els.resetButton.addEventListener("click", () => {
 els.prevPage.addEventListener("click", () => {
   if (state.page > 1) {
     state.page -= 1;
-    loadQuestions().catch(showError);
+    loadQuestions();
   }
 });
 els.nextPage.addEventListener("click", () => {
   if (state.page < state.totalPages) {
     state.page += 1;
-    loadQuestions().catch(showError);
+    loadQuestions();
   }
 });
 
-loadStats()
-  .then(loadQuestions)
+loadData()
+  .then(() => {
+    loadStats();
+    loadQuestions();
+  })
   .catch(showError);
