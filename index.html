@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Question Bank</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>Question Bank</h1>
+        <p>Deduplicated exam questions and choices from the SQLite database.</p>
+      </div>
+      <div class="status" id="dbStatus">Loading database...</div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <section class="panel">
+          <h2>Summary</h2>
+          <div class="metrics">
+            <div><strong id="metricQuestions">-</strong><span>Questions</span></div>
+            <div><strong id="metricChoices">-</strong><span>Choices</span></div>
+            <div><strong id="metricDuplicates">-</strong><span>Duplicates</span></div>
+            <div><strong id="metricSkipped">-</strong><span>Skipped</span></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Filters</h2>
+          <label>
+            Search
+            <input id="searchInput" type="search" placeholder="Question, choice, or note">
+          </label>
+          <button id="resetButton" type="button">Reset</button>
+        </section>
+      </aside>
+
+      <section class="content">
+        <div class="toolbar">
+          <div>
+            <h2 id="resultTitle">Questions</h2>
+            <p id="resultMeta">Loading...</p>
+          </div>
+          <div class="pager">
+            <button id="prevPage" type="button" aria-label="Previous page">&lt;</button>
+            <span id="pageInfo">-</span>
+            <button id="nextPage" type="button" aria-label="Next page">&gt;</button>
+          </div>
+        </div>
+
+        <div class="workspace">
+          <div class="question-list" id="questionList"></div>
+          <article class="detail" id="questionDetail">
+            <div class="empty-state">Select a question to view choices and source details.</div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
