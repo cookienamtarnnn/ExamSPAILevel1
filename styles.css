@@ -238,6 +238,8 @@ button.secondary:hover {
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  height: auto;
+  min-height: 72px;
   margin: 0;
   padding: 12px;
   border: 1px solid var(--border);
@@ -259,6 +261,8 @@ button.secondary:hover {
 
 .question-line {
   display: block;
+  max-width: 100%;
+  line-height: 1.45;
   overflow: visible;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -269,6 +273,7 @@ button.secondary:hover {
 .meta {
   display: flex;
   flex-wrap: wrap;
+  max-width: 100%;
   gap: 8px;
   margin-top: 8px;
   color: var(--muted);
