@@ -15,6 +15,7 @@ const els = {
   metricSkipped: document.querySelector("#metricSkipped"),
   searchInput: document.querySelector("#searchInput"),
   resetButton: document.querySelector("#resetButton"),
+  exportButton: document.querySelector("#exportButton"),
   resultTitle: document.querySelector("#resultTitle"),
   resultMeta: document.querySelector("#resultMeta"),
   questionList: document.querySelector("#questionList"),
@@ -31,6 +32,10 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function excelCell(value) {
+  return escapeHtml(value).replaceAll("\n", "<br>");
 }
 
 async function fetchJson(url) {
@@ -188,6 +193,78 @@ function refreshFromFilters() {
   loadQuestions();
 }
 
+function exportAllQuestionsToExcel() {
+  if (!state.data) return;
+
+  const rows = state.data.questions.map((question, index) => {
+    const choices = Object.fromEntries(
+      questionChoices(question.id).map((choice) => [choice.choice_label, choice.choice_text])
+    );
+    return [
+      index + 1,
+      question.source_question_no,
+      question.question_text,
+      choices.A || "",
+      choices.B || "",
+      choices.C || "",
+      choices.D || "",
+      choices.E || "",
+      choices.F || "",
+      question.correct_answer || "",
+      question.reason || "",
+      question.note || "",
+      question.source_file || "",
+      question.source_sheet || "",
+    ];
+  });
+
+  const headers = [
+    "No",
+    "Source Question No",
+    "Question",
+    "Choice A",
+    "Choice B",
+    "Choice C",
+    "Choice D",
+    "Choice E",
+    "Choice F",
+    "Correct Answer",
+    "Reason",
+    "Note",
+    "Source File",
+    "Source Sheet",
+  ];
+
+  const tableRows = [headers, ...rows]
+    .map((row) => `<tr>${row.map((cell) => `<td>${excelCell(cell)}</td>`).join("")}</tr>`)
+    .join("");
+  const workbook = `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office"
+          xmlns:x="urn:schemas-microsoft-com:office:excel"
+          xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8">
+        <style>
+          table { border-collapse: collapse; }
+          th, td { border: 1px solid #999; padding: 6px; vertical-align: top; mso-number-format: "\\@"; }
+        </style>
+      </head>
+      <body><table>${tableRows}</table></body>
+    </html>
+  `;
+  const blob = new Blob(["\ufeff", workbook], {
+    type: "application/vnd.ms-excel;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "question_bank_export.xls";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 function showError(error) {
   els.dbStatus.textContent = "Error";
   els.questionList.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
@@ -201,6 +278,7 @@ els.resetButton.addEventListener("click", () => {
   els.searchInput.value = "";
   refreshFromFilters();
 });
+els.exportButton.addEventListener("click", exportAllQuestionsToExcel);
 els.prevPage.addEventListener("click", () => {
   if (state.page > 1) {
     state.page -= 1;

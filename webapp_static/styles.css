@@ -225,6 +225,7 @@ button.secondary:hover {
 .question-list {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 8px;
   min-width: 0;
   max-height: calc(100vh - 206px);
@@ -233,7 +234,10 @@ button.secondary:hover {
 }
 
 .question-item {
+  box-sizing: border-box;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   margin: 0;
   padding: 12px;
   border: 1px solid var(--border);
@@ -242,6 +246,9 @@ button.secondary:hover {
   color: var(--text);
   text-align: left;
   box-shadow: none;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .question-item:hover,
@@ -251,10 +258,11 @@ button.secondary:hover {
 }
 
 .question-line {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  display: block;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   font-weight: 650;
 }
 
