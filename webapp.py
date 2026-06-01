@@ -46,6 +46,9 @@ class QuestionBankHandler(BaseHTTPRequestHandler):
         if path == "/app.js":
             self.send_file(os.path.join(STATIC_DIR, "app.js"), "application/javascript; charset=utf-8")
             return
+        if path == "/data.json":
+            self.send_file(os.path.join(STATIC_DIR, "data.json"), "application/json; charset=utf-8")
+            return
         if path == "/api/stats":
             self.send_json(self.get_stats())
             return
